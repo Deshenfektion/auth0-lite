@@ -12,6 +12,14 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(ApiException.class)
+    public ProblemDetail handleApiException(ApiException exception) {
+        ProblemDetail problemDetail = ProblemDetail.forStatus(exception.getStatus());
+        problemDetail.setTitle(exception.getStatus().getReasonPhrase());
+        problemDetail.setDetail(exception.getMessage());
+        return problemDetail;
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleUnexpectedException(Exception exception) {
         log.error("Unhandled exception reached the global fallback handler", exception);
