@@ -4,7 +4,11 @@ A miniature Auth0/Okta-style identity provider, built from scratch to demonstrat
 
 ## Stack
 
-Java 21 · Spring Boot 3.5 · PostgreSQL · Flyway · Gradle (Kotlin DSL) · Docker · Testcontainers · springdoc-openapi
+Java 21 · Spring Boot 3.5 · Spring Security · PostgreSQL · Flyway · Gradle (Kotlin DSL) · Docker · Testcontainers · springdoc-openapi
+
+## Features
+
+- User registration with Argon2id password hashing and RBAC groundwork
 
 ## Quickstart
 
