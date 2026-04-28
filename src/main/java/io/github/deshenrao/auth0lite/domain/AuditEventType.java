@@ -1,0 +1,8 @@
+package io.github.deshenrao.auth0lite.domain;
+
+public enum AuditEventType {
+    LOGIN_SUCCESS,
+    LOGIN_FAILURE,
+    LOGIN_BLOCKED_ACCOUNT_LOCKED,
+    LOGIN_BLOCKED_ACCOUNT_DISABLED
+}
