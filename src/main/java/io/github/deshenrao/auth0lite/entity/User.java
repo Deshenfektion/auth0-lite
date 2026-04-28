@@ -45,6 +45,12 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     @Version
     private long version;
 
@@ -82,6 +88,28 @@ public class User {
         roles.add(role);
     }
 
+    public boolean isCurrentlyLocked(Instant now) {
+        return lockedUntil != null && lockedUntil.isAfter(now);
+    }
+
+    public int registerFailedAttempt(Instant now) {
+        if (lockedUntil != null && !lockedUntil.isAfter(now)) {
+            failedLoginAttempts = 0;
+            lockedUntil = null;
+        }
+        failedLoginAttempts++;
+        return failedLoginAttempts;
+    }
+
+    public void lockUntil(Instant until) {
+        this.lockedUntil = until;
+    }
+
+    public void resetFailedAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -112,5 +140,13 @@ public class User {
 
     public Set<Role> getRoles() {
         return Set.copyOf(roles);
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public Instant getLockedUntil() {
+        return lockedUntil;
     }
 }
