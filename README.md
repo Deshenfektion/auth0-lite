@@ -8,7 +8,7 @@ Java 21 · Spring Boot 3.5 · Spring Security · PostgreSQL · Flyway · Gradle 
 
 ## Features
 
-- User registration with Argon2id password hashing and RBAC groundwork
+- Registration & login — Argon2id hashing, timing-safe verification, progressive account lockout, audit trail
 
 ## Quickstart
 
