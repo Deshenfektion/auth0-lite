@@ -4,6 +4,10 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
 
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+
 server:
   error:
     include-stacktrace: never

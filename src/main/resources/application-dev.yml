@@ -4,6 +4,10 @@ spring:
     username: ${POSTGRES_USER:auth0lite}
     password: ${POSTGRES_PASSWORD:changeme}
 
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-signing-secret-do-not-use-this-value-outside-local-development}
+
 management:
   endpoint:
     health:

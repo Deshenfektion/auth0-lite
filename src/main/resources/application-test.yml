@@ -3,6 +3,10 @@ spring:
     hibernate:
       ddl-auto: validate
 
+app:
+  jwt:
+    secret: test-only-signing-secret-not-for-production-use-1234567890
+
 logging:
   level:
     io.github.deshenrao.auth0lite: INFO

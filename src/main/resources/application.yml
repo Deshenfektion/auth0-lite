@@ -26,3 +26,9 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+
+app:
+  jwt:
+    issuer: auth0-lite
+    audience: auth0-lite-api
+    access-token-ttl: PT15M

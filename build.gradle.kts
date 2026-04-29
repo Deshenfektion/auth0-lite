@@ -34,6 +34,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:${property("springdocOpenapiVersion")}")
+    implementation("com.nimbusds:nimbus-jose-jwt:9.37.3")
 
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.bouncycastle:bcprov-jdk18on:1.78.1")
@@ -48,4 +49,5 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    systemProperty("spring.profiles.active", "test")
 }
