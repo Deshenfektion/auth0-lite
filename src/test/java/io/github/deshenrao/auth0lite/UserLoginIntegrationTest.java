@@ -1,6 +1,7 @@
 package io.github.deshenrao.auth0lite;
 
 import io.github.deshenrao.auth0lite.dto.LoginRequest;
+import io.github.deshenrao.auth0lite.dto.LoginResponse;
 import io.github.deshenrao.auth0lite.dto.RegisterUserRequest;
 import io.github.deshenrao.auth0lite.dto.UserResponse;
 import org.junit.jupiter.api.Test;
@@ -28,12 +29,16 @@ class UserLoginIntegrationTest {
         String email = "login.success@example.com";
         register(email, PASSWORD);
 
-        ResponseEntity<UserResponse> response = attemptLogin(email, PASSWORD, UserResponse.class);
+        ResponseEntity<LoginResponse> response = attemptLogin(email, PASSWORD, LoginResponse.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().email()).isEqualTo(email);
-        assertThat(response.getBody().roles()).containsExactly("USER");
+        LoginResponse body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.tokenType()).isEqualTo("Bearer");
+        assertThat(body.accessToken()).isNotBlank();
+        assertThat(body.expiresInSeconds()).isPositive();
+        assertThat(body.user().email()).isEqualTo(email);
+        assertThat(body.user().roles()).containsExactly("USER");
     }
 
     @Test
