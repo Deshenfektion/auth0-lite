@@ -4,11 +4,12 @@ A miniature Auth0/Okta-style identity provider, built from scratch to demonstrat
 
 ## Stack
 
-Java 21 · Spring Boot 3.5 · Spring Security · PostgreSQL · Flyway · Gradle (Kotlin DSL) · Docker · Testcontainers · springdoc-openapi
+Java 21 · Spring Boot 3.5 · Spring Security · PostgreSQL · Flyway · Nimbus JOSE+JWT · Gradle (Kotlin DSL) · Docker · Testcontainers · springdoc-openapi
 
 ## Features
 
 - Registration & login — Argon2id hashing, timing-safe verification, progressive account lockout, audit trail
+- JWT access tokens and a protected `/users/me` endpoint
 
 ## Quickstart
 
