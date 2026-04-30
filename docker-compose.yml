@@ -27,6 +27,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-auth0lite}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-auth0lite}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-signing-secret-do-not-use-this-value-outside-local-development}
     ports:
       - "8080:8080"
 

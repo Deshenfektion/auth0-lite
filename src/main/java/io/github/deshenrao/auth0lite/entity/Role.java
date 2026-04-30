@@ -31,6 +31,10 @@ public class Role {
     protected Role() {
     }
 
+    public Role(RoleName name) {
+        this.name = name;
+    }
+
     public UUID getId() {
         return id;
     }
