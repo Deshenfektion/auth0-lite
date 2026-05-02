@@ -32,3 +32,5 @@ app:
     issuer: auth0-lite
     audience: auth0-lite-api
     access-token-ttl: PT15M
+  refresh-token:
+    ttl: P30D
