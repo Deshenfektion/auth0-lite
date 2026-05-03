@@ -30,7 +30,7 @@ class JwtProtectedEndpointIntegrationTest {
     void meEndpointReturnsAuthenticatedUserWhenGivenAValidAccessToken() {
         String email = "jwt.flow@example.com";
         register(email, PASSWORD);
-        String accessToken = login(email, PASSWORD).accessToken();
+        String accessToken = login(email, PASSWORD).tokens().accessToken();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);

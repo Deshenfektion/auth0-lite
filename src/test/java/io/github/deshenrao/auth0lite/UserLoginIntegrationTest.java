@@ -34,9 +34,10 @@ class UserLoginIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         LoginResponse body = response.getBody();
         assertThat(body).isNotNull();
-        assertThat(body.tokenType()).isEqualTo("Bearer");
-        assertThat(body.accessToken()).isNotBlank();
-        assertThat(body.expiresInSeconds()).isPositive();
+        assertThat(body.tokens().tokenType()).isEqualTo("Bearer");
+        assertThat(body.tokens().accessToken()).isNotBlank();
+        assertThat(body.tokens().refreshToken()).isNotBlank();
+        assertThat(body.tokens().expiresInSeconds()).isPositive();
         assertThat(body.user().email()).isEqualTo(email);
         assertThat(body.user().roles()).containsExactly("USER");
     }
