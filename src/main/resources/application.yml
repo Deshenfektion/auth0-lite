@@ -34,3 +34,5 @@ app:
     access-token-ttl: PT15M
   refresh-token:
     ttl: P30D
+  session:
+    absolute-ttl: P90D
