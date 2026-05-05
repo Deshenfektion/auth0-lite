@@ -11,6 +11,7 @@ Java 21 · Spring Boot 3.5 · Spring Security · PostgreSQL · Flyway · Nimbus 
 - Registration & login — Argon2id hashing, timing-safe verification, progressive account lockout, audit trail
 - JWT access tokens and a protected `/users/me` endpoint
 - Rotating refresh tokens with reuse/theft detection
+- Device-aware session management (list, revoke, logout everywhere)
 
 ## Quickstart
 
