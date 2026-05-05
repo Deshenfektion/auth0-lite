@@ -1,7 +1,8 @@
 package io.github.deshenrao.auth0lite.controller;
 
 import io.github.deshenrao.auth0lite.config.JwtProperties;
-import io.github.deshenrao.auth0lite.domain.IssuedRefreshToken;
+import io.github.deshenrao.auth0lite.domain.JwtPrincipal;
+import io.github.deshenrao.auth0lite.domain.NewSession;
 import io.github.deshenrao.auth0lite.domain.RefreshResult;
 import io.github.deshenrao.auth0lite.domain.RequestMetadata;
 import io.github.deshenrao.auth0lite.dto.LoginRequest;
@@ -15,12 +16,14 @@ import io.github.deshenrao.auth0lite.mapper.UserMapper;
 import io.github.deshenrao.auth0lite.service.AuthenticationService;
 import io.github.deshenrao.auth0lite.service.JwtService;
 import io.github.deshenrao.auth0lite.service.RefreshTokenService;
+import io.github.deshenrao.auth0lite.service.SessionService;
 import io.github.deshenrao.auth0lite.service.UserRegistrationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,6 +36,7 @@ public class AuthController {
     private final UserRegistrationService userRegistrationService;
     private final AuthenticationService authenticationService;
     private final RefreshTokenService refreshTokenService;
+    private final SessionService sessionService;
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final UserMapper userMapper;
@@ -41,6 +45,7 @@ public class AuthController {
             UserRegistrationService userRegistrationService,
             AuthenticationService authenticationService,
             RefreshTokenService refreshTokenService,
+            SessionService sessionService,
             JwtService jwtService,
             JwtProperties jwtProperties,
             UserMapper userMapper
@@ -48,6 +53,7 @@ public class AuthController {
         this.userRegistrationService = userRegistrationService;
         this.authenticationService = authenticationService;
         this.refreshTokenService = refreshTokenService;
+        this.sessionService = sessionService;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.userMapper = userMapper;
@@ -64,13 +70,14 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest servletRequest
     ) {
-        User user = authenticationService.login(request, requestMetadata(servletRequest));
+        RequestMetadata metadata = requestMetadata(servletRequest);
+        User user = authenticationService.login(request, metadata);
 
-        String accessToken = jwtService.generateAccessToken(userMapper.toTokenSubject(user));
-        IssuedRefreshToken refreshToken = refreshTokenService.issueForNewLogin(user.getId());
+        NewSession newSession = sessionService.startSession(user.getId(), metadata);
+        String accessToken = jwtService.generateAccessToken(userMapper.toTokenSubject(user, newSession.sessionId()));
 
         LoginResponse response = new LoginResponse(
-                tokenResponse(accessToken, refreshToken.rawToken()),
+                tokenResponse(accessToken, newSession.refreshToken().rawToken()),
                 userMapper.toResponse(user)
         );
         return ResponseEntity.ok(response);
@@ -85,6 +92,15 @@ public class AuthController {
         String accessToken = jwtService.generateAccessToken(result.subject());
 
         return ResponseEntity.ok(tokenResponse(accessToken, result.refreshToken().rawToken()));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @AuthenticationPrincipal JwtPrincipal principal,
+            HttpServletRequest servletRequest
+    ) {
+        sessionService.revokeSession(principal.sessionId(), principal.userId(), requestMetadata(servletRequest));
+        return ResponseEntity.noContent().build();
     }
 
     private TokenResponse tokenResponse(String accessToken, String refreshToken) {
