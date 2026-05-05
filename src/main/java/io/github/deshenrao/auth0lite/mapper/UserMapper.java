@@ -8,6 +8,7 @@ import io.github.deshenrao.auth0lite.entity.User;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,8 +26,8 @@ public class UserMapper {
         );
     }
 
-    public TokenSubject toTokenSubject(User user) {
-        return new TokenSubject(user.getId(), user.getEmail(), roleNames(user).toList());
+    public TokenSubject toTokenSubject(User user, UUID sessionId) {
+        return new TokenSubject(user.getId(), sessionId, user.getEmail(), roleNames(user).toList());
     }
 
     private Stream<String> roleNames(User user) {

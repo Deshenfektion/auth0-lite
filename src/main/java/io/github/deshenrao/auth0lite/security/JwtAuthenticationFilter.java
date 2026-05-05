@@ -66,6 +66,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private Authentication buildAuthentication(JWTClaimsSet claims) throws ParseException {
         UUID userId = UUID.fromString(claims.getSubject());
+        UUID sessionId = UUID.fromString(claims.getStringClaim("sid"));
         String email = claims.getStringClaim("email");
         List<String> roles = claims.getStringListClaim("roles");
 
@@ -73,7 +74,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                 .toList();
 
-        JwtPrincipal principal = new JwtPrincipal(userId, email);
+        JwtPrincipal principal = new JwtPrincipal(userId, sessionId, email);
         return new UsernamePasswordAuthenticationToken(principal, null, authorities);
     }
 }

@@ -6,11 +6,13 @@ import io.github.deshenrao.auth0lite.domain.IssuedRefreshToken;
 import io.github.deshenrao.auth0lite.domain.RefreshResult;
 import io.github.deshenrao.auth0lite.domain.RequestMetadata;
 import io.github.deshenrao.auth0lite.entity.RefreshToken;
+import io.github.deshenrao.auth0lite.entity.Session;
 import io.github.deshenrao.auth0lite.entity.User;
 import io.github.deshenrao.auth0lite.exception.InvalidRefreshTokenException;
 import io.github.deshenrao.auth0lite.exception.RefreshTokenReuseDetectedException;
 import io.github.deshenrao.auth0lite.mapper.UserMapper;
 import io.github.deshenrao.auth0lite.repository.RefreshTokenRepository;
+import io.github.deshenrao.auth0lite.repository.SessionRepository;
 import io.github.deshenrao.auth0lite.repository.UserRepository;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ import java.util.UUID;
 public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
+    private final SessionRepository sessionRepository;
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final AuditLogService auditLogService;
@@ -41,6 +44,7 @@ public class RefreshTokenService {
 
     public RefreshTokenService(
             RefreshTokenRepository refreshTokenRepository,
+            SessionRepository sessionRepository,
             UserRepository userRepository,
             UserMapper userMapper,
             AuditLogService auditLogService,
@@ -49,6 +53,7 @@ public class RefreshTokenService {
             @Lazy RefreshTokenService self
     ) {
         this.refreshTokenRepository = refreshTokenRepository;
+        this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.auditLogService = auditLogService;
@@ -58,8 +63,8 @@ public class RefreshTokenService {
     }
 
     @Transactional
-    public IssuedRefreshToken issueForNewLogin(UUID userId) {
-        return issue(userId, UUID.randomUUID());
+    public IssuedRefreshToken issueForSession(UUID userId, UUID sessionId) {
+        return issue(userId, sessionId);
     }
 
     @Transactional
@@ -70,6 +75,9 @@ public class RefreshTokenService {
         User user = userRepository.findByIdWithRoles(existing.getUserId())
                 .orElseThrow(InvalidRefreshTokenException::new);
 
+        Session session = sessionRepository.findById(existing.getFamilyId())
+                .orElseThrow(InvalidRefreshTokenException::new);
+
         if (existing.isRevoked()) {
             self.revokeFamily(existing.getFamilyId());
             auditLogService.record(
@@ -77,22 +85,31 @@ public class RefreshTokenService {
             throw new RefreshTokenReuseDetectedException();
         }
 
-        if (existing.isExpired(clock.instant()) || !user.isEnabled()) {
+        Instant now = clock.instant();
+        if (existing.isExpired(now) || !user.isEnabled() || !session.isActive(now)) {
             throw new InvalidRefreshTokenException();
         }
 
-        existing.revoke(clock.instant());
+        existing.revoke(now);
         refreshTokenRepository.save(existing);
+
+        session.recordActivity(now, metadata.ipAddress(), metadata.userAgent());
+        sessionRepository.save(session);
 
         IssuedRefreshToken next = issue(user.getId(), existing.getFamilyId());
         auditLogService.record(AuditEventType.REFRESH_TOKEN_ROTATED, user.getEmail(), user.getId(), metadata);
 
-        return new RefreshResult(userMapper.toTokenSubject(user), next);
+        return new RefreshResult(userMapper.toTokenSubject(user, session.getId()), next);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void revokeFamily(UUID familyId) {
         refreshTokenRepository.revokeFamily(familyId, clock.instant());
+    }
+
+    @Transactional
+    public void revokeAllForUser(UUID userId) {
+        refreshTokenRepository.revokeAllForUser(userId, clock.instant());
     }
 
     private IssuedRefreshToken issue(UUID userId, UUID familyId) {

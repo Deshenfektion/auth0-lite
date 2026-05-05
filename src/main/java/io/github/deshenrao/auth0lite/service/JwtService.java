@@ -47,6 +47,7 @@ public class JwtService {
                 .issuer(properties.issuer())
                 .audience(properties.audience())
                 .subject(subject.userId().toString())
+                .claim("sid", subject.sessionId().toString())
                 .claim("email", subject.email())
                 .claim("roles", subject.roles())
                 .issueTime(Date.from(now))
