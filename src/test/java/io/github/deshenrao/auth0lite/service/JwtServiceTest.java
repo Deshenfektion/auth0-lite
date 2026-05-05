@@ -29,7 +29,7 @@ class JwtServiceTest {
     void generatesAndValidatesTokenWithExpectedClaims() throws Exception {
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
         JwtService jwtService = new JwtService(properties, clock);
-        TokenSubject subject = new TokenSubject(UUID.randomUUID(), "claims.test@example.com", List.of("USER"));
+        TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "claims.test@example.com", List.of("USER"));
 
         String token = jwtService.generateAccessToken(subject);
         JWTClaimsSet claims = jwtService.parseAndValidate(token);
@@ -37,6 +37,7 @@ class JwtServiceTest {
         assertThat(claims.getSubject()).isEqualTo(subject.userId().toString());
         assertThat(claims.getIssuer()).isEqualTo(properties.issuer());
         assertThat(claims.getAudience()).containsExactly(properties.audience());
+        assertThat(claims.getStringClaim("sid")).isEqualTo(subject.sessionId().toString());
         assertThat(claims.getStringClaim("email")).isEqualTo(subject.email());
         assertThat(claims.getStringListClaim("roles")).containsExactly("USER");
     }
@@ -45,7 +46,7 @@ class JwtServiceTest {
     void rejectsExpiredToken() {
         Instant issuedAt = Instant.parse("2026-01-01T00:00:00Z");
         JwtService issuingService = new JwtService(properties, Clock.fixed(issuedAt, ZoneOffset.UTC));
-        TokenSubject subject = new TokenSubject(UUID.randomUUID(), "expired@example.com", List.of("USER"));
+        TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "expired@example.com", List.of("USER"));
         String token = issuingService.generateAccessToken(subject);
 
         Clock afterExpiry = Clock.fixed(issuedAt.plus(Duration.ofMinutes(16)), ZoneOffset.UTC);
@@ -63,7 +64,7 @@ class JwtServiceTest {
         JwtService issuingService = new JwtService(otherIssuerProperties, clock);
         JwtService validatingService = new JwtService(properties, clock);
 
-        TokenSubject subject = new TokenSubject(UUID.randomUUID(), "wrong.issuer@example.com", List.of("USER"));
+        TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "wrong.issuer@example.com", List.of("USER"));
         String token = issuingService.generateAccessToken(subject);
 
         assertThatThrownBy(() -> validatingService.parseAndValidate(token))
@@ -74,7 +75,7 @@ class JwtServiceTest {
     void rejectsTamperedSignature() {
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
         JwtService jwtService = new JwtService(properties, clock);
-        TokenSubject subject = new TokenSubject(UUID.randomUUID(), "tampered@example.com", List.of("USER"));
+        TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "tampered@example.com", List.of("USER"));
         String token = jwtService.generateAccessToken(subject);
 
         String tamperedToken = token.substring(0, token.length() - 1) + (token.endsWith("A") ? "B" : "A");

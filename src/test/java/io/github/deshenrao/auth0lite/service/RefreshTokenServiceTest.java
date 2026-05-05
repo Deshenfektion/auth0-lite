@@ -6,11 +6,13 @@ import io.github.deshenrao.auth0lite.domain.RequestMetadata;
 import io.github.deshenrao.auth0lite.domain.RoleName;
 import io.github.deshenrao.auth0lite.entity.RefreshToken;
 import io.github.deshenrao.auth0lite.entity.Role;
+import io.github.deshenrao.auth0lite.entity.Session;
 import io.github.deshenrao.auth0lite.entity.User;
 import io.github.deshenrao.auth0lite.exception.InvalidRefreshTokenException;
 import io.github.deshenrao.auth0lite.exception.RefreshTokenReuseDetectedException;
 import io.github.deshenrao.auth0lite.mapper.UserMapper;
 import io.github.deshenrao.auth0lite.repository.RefreshTokenRepository;
+import io.github.deshenrao.auth0lite.repository.SessionRepository;
 import io.github.deshenrao.auth0lite.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,9 @@ class RefreshTokenServiceTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Mock
+    private SessionRepository sessionRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -55,7 +60,8 @@ class RefreshTokenServiceTest {
     @BeforeEach
     void setUp() {
         refreshTokenService = new RefreshTokenService(
-                refreshTokenRepository, userRepository, userMapper, auditLogService, properties, clock, null);
+                refreshTokenRepository, sessionRepository, userRepository, userMapper, auditLogService, properties,
+                clock, null);
         ReflectionTestUtils.setField(refreshTokenService, "self", refreshTokenService);
     }
 
@@ -76,6 +82,7 @@ class RefreshTokenServiceTest {
 
         when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(expired));
         when(userRepository.findByIdWithRoles(user.getId())).thenReturn(Optional.of(user));
+        when(sessionRepository.findById(familyId)).thenReturn(Optional.of(activeSession(familyId, user.getId())));
 
         assertThatThrownBy(() -> refreshTokenService.rotate("presented-token", metadata()))
                 .isInstanceOf(InvalidRefreshTokenException.class);
@@ -91,6 +98,7 @@ class RefreshTokenServiceTest {
 
         when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(alreadyRevoked));
         when(userRepository.findByIdWithRoles(user.getId())).thenReturn(Optional.of(user));
+        when(sessionRepository.findById(familyId)).thenReturn(Optional.of(activeSession(familyId, user.getId())));
 
         assertThatThrownBy(() -> refreshTokenService.rotate("presented-token", metadata()))
                 .isInstanceOf(RefreshTokenReuseDetectedException.class);
@@ -104,16 +112,20 @@ class RefreshTokenServiceTest {
         UUID familyId = UUID.randomUUID();
         RefreshToken valid = new RefreshToken(user.getId(), familyId, "hash",
                 clock.instant().minus(Duration.ofMinutes(5)), clock.instant().plus(Duration.ofDays(29)));
+        Session session = activeSession(familyId, user.getId());
 
         when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(valid));
         when(userRepository.findByIdWithRoles(user.getId())).thenReturn(Optional.of(user));
+        when(sessionRepository.findById(familyId)).thenReturn(Optional.of(session));
 
         RefreshResult result = refreshTokenService.rotate("presented-token", metadata());
 
         assertThat(valid.isRevoked()).isTrue();
         assertThat(result.subject().userId()).isEqualTo(user.getId());
+        assertThat(result.subject().sessionId()).isEqualTo(familyId);
         assertThat(result.refreshToken().rawToken()).isNotBlank();
         verify(refreshTokenRepository, times(2)).save(any());
+        verify(sessionRepository).save(session);
     }
 
     @Test
@@ -126,6 +138,24 @@ class RefreshTokenServiceTest {
 
         when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(valid));
         when(userRepository.findByIdWithRoles(user.getId())).thenReturn(Optional.of(user));
+        when(sessionRepository.findById(familyId)).thenReturn(Optional.of(activeSession(familyId, user.getId())));
+
+        assertThatThrownBy(() -> refreshTokenService.rotate("presented-token", metadata()))
+                .isInstanceOf(InvalidRefreshTokenException.class);
+    }
+
+    @Test
+    void rotateRejectsTokenWhenItsSessionHasBeenRevoked() {
+        User user = testUser();
+        UUID familyId = UUID.randomUUID();
+        RefreshToken valid = new RefreshToken(user.getId(), familyId, "hash",
+                clock.instant().minus(Duration.ofMinutes(5)), clock.instant().plus(Duration.ofDays(29)));
+        Session revokedSession = activeSession(familyId, user.getId());
+        revokedSession.revoke(clock.instant().minus(Duration.ofMinutes(1)));
+
+        when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(valid));
+        when(userRepository.findByIdWithRoles(user.getId())).thenReturn(Optional.of(user));
+        when(sessionRepository.findById(familyId)).thenReturn(Optional.of(revokedSession));
 
         assertThatThrownBy(() -> refreshTokenService.rotate("presented-token", metadata()))
                 .isInstanceOf(InvalidRefreshTokenException.class);
@@ -136,6 +166,11 @@ class RefreshTokenServiceTest {
         user.assignRole(new Role(RoleName.USER));
         ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
         return user;
+    }
+
+    private Session activeSession(UUID sessionId, UUID userId) {
+        return new Session(sessionId, userId, clock.instant().minus(Duration.ofDays(1)),
+                clock.instant().plus(Duration.ofDays(89)), "127.0.0.1", "junit");
     }
 
     private RequestMetadata metadata() {
