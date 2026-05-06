@@ -80,6 +80,20 @@ public class SessionService {
     }
 
     @Transactional
+    public void adminRevokeSession(UUID userId, UUID sessionId, RequestMetadata metadata) {
+        Session session = sessionRepository.findById(sessionId)
+                .filter(candidate -> candidate.getUserId().equals(userId))
+                .orElseThrow(SessionNotFoundException::new);
+
+        session.revoke(clock.instant());
+        sessionRepository.save(session);
+        refreshTokenService.revokeFamily(sessionId);
+
+        auditEmail(userId).ifPresent(email ->
+                auditLogService.record(AuditEventType.SESSION_REVOKED_BY_ADMIN, email, userId, metadata));
+    }
+
+    @Transactional
     public void revokeAllSessions(UUID userId, RequestMetadata metadata) {
         Instant now = clock.instant();
         sessionRepository.revokeAllForUser(userId, now);
