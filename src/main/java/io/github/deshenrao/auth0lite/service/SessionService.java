@@ -94,6 +94,21 @@ public class SessionService {
     }
 
     @Transactional
+    public void revokeAllSessionsExcept(UUID userId, UUID exceptSessionId, RequestMetadata metadata) {
+        Instant now = clock.instant();
+        for (Session session : sessionRepository.findByUserIdAndRevokedAtIsNull(userId)) {
+            if (!session.getId().equals(exceptSessionId)) {
+                session.revoke(now);
+                sessionRepository.save(session);
+                refreshTokenService.revokeFamily(session.getId());
+            }
+        }
+
+        auditEmail(userId).ifPresent(email ->
+                auditLogService.record(AuditEventType.OTHER_SESSIONS_REVOKED, email, userId, metadata));
+    }
+
+    @Transactional
     public void revokeAllSessions(UUID userId, RequestMetadata metadata) {
         Instant now = clock.instant();
         sessionRepository.revokeAllForUser(userId, now);
