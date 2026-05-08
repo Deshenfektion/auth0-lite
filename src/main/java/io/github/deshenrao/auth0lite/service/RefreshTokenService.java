@@ -2,6 +2,7 @@ package io.github.deshenrao.auth0lite.service;
 
 import io.github.deshenrao.auth0lite.config.RefreshTokenProperties;
 import io.github.deshenrao.auth0lite.domain.AuditEventType;
+import io.github.deshenrao.auth0lite.domain.GeneratedToken;
 import io.github.deshenrao.auth0lite.domain.IssuedRefreshToken;
 import io.github.deshenrao.auth0lite.domain.RefreshResult;
 import io.github.deshenrao.auth0lite.domain.RequestMetadata;
@@ -14,19 +15,14 @@ import io.github.deshenrao.auth0lite.mapper.UserMapper;
 import io.github.deshenrao.auth0lite.repository.RefreshTokenRepository;
 import io.github.deshenrao.auth0lite.repository.SessionRepository;
 import io.github.deshenrao.auth0lite.repository.UserRepository;
+import io.github.deshenrao.auth0lite.security.SecureTokenGenerator;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
@@ -37,10 +33,10 @@ public class RefreshTokenService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final AuditLogService auditLogService;
+    private final SecureTokenGenerator tokenGenerator;
     private final RefreshTokenProperties properties;
     private final Clock clock;
     private final RefreshTokenService self;
-    private final SecureRandom secureRandom = new SecureRandom();
 
     public RefreshTokenService(
             RefreshTokenRepository refreshTokenRepository,
@@ -48,6 +44,7 @@ public class RefreshTokenService {
             UserRepository userRepository,
             UserMapper userMapper,
             AuditLogService auditLogService,
+            SecureTokenGenerator tokenGenerator,
             RefreshTokenProperties properties,
             Clock clock,
             @Lazy RefreshTokenService self
@@ -57,6 +54,7 @@ public class RefreshTokenService {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.auditLogService = auditLogService;
+        this.tokenGenerator = tokenGenerator;
         this.properties = properties;
         this.clock = clock;
         this.self = self;
@@ -69,7 +67,7 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshResult rotate(String presentedRawToken, RequestMetadata metadata) {
-        RefreshToken existing = refreshTokenRepository.findByTokenHash(hash(presentedRawToken))
+        RefreshToken existing = refreshTokenRepository.findByTokenHash(tokenGenerator.hash(presentedRawToken))
                 .orElseThrow(InvalidRefreshTokenException::new);
 
         User user = userRepository.findByIdWithRoles(existing.getUserId())
@@ -113,25 +111,13 @@ public class RefreshTokenService {
     }
 
     private IssuedRefreshToken issue(UUID userId, UUID familyId) {
-        byte[] randomBytes = new byte[32];
-        secureRandom.nextBytes(randomBytes);
-        String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+        GeneratedToken token = tokenGenerator.generate();
 
         Instant now = clock.instant();
         Instant expiresAt = now.plus(properties.ttl());
-        RefreshToken entity = new RefreshToken(userId, familyId, hash(rawToken), now, expiresAt);
+        RefreshToken entity = new RefreshToken(userId, familyId, token.hash(), now, expiresAt);
         refreshTokenRepository.save(entity);
 
-        return new IssuedRefreshToken(rawToken, expiresAt);
-    }
-
-    private String hash(String rawToken) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashBytes);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is not available", exception);
-        }
+        return new IssuedRefreshToken(token.rawValue(), expiresAt);
     }
 }
