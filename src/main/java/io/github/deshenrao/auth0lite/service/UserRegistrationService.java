@@ -18,15 +18,18 @@ public class UserRegistrationService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     public UserRegistrationService(
             UserRepository userRepository,
             RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            EmailVerificationService emailVerificationService
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @Transactional
@@ -41,11 +44,15 @@ public class UserRegistrationService {
         User user = new User(normalizedEmail, passwordHash);
         user.assignRole(defaultRole());
 
+        User savedUser;
         try {
-            return userRepository.saveAndFlush(user);
+            savedUser = userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException exception) {
             throw new EmailAlreadyRegisteredException(normalizedEmail);
         }
+
+        emailVerificationService.sendVerificationEmail(savedUser.getId(), savedUser.getEmail());
+        return savedUser;
     }
 
     private Role defaultRole() {
