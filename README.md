@@ -13,6 +13,7 @@ Java 21 · Spring Boot 3.5 · Spring Security · PostgreSQL · Flyway · Nimbus 
 - Rotating refresh tokens with reuse/theft detection
 - Device-aware session management (list, revoke, logout everywhere)
 - Role- and permission-based authorization via `@RequiresRole` / `@RequiresPermission`
+- Email verification, password reset & change
 
 ## Quickstart
 
