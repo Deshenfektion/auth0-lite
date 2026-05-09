@@ -36,3 +36,7 @@ app:
     ttl: P30D
   session:
     absolute-ttl: P90D
+  email-verification:
+    ttl: P1D
+  password-reset:
+    ttl: PT30M

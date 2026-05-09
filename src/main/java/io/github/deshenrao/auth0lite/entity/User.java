@@ -110,6 +110,14 @@ public class User {
         this.lockedUntil = null;
     }
 
+    public void markEmailVerified() {
+        this.emailVerified = true;
+    }
+
+    public void changePasswordHash(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+    }
+
     public UUID getId() {
         return id;
     }
