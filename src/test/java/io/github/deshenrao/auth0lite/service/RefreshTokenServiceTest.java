@@ -14,6 +14,7 @@ import io.github.deshenrao.auth0lite.mapper.UserMapper;
 import io.github.deshenrao.auth0lite.repository.RefreshTokenRepository;
 import io.github.deshenrao.auth0lite.repository.SessionRepository;
 import io.github.deshenrao.auth0lite.repository.UserRepository;
+import io.github.deshenrao.auth0lite.security.SecureTokenGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +53,7 @@ class RefreshTokenServiceTest {
     private AuditLogService auditLogService;
 
     private final UserMapper userMapper = new UserMapper();
+    private final SecureTokenGenerator tokenGenerator = new SecureTokenGenerator();
     private final Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
     private final RefreshTokenProperties properties = new RefreshTokenProperties(Duration.ofDays(30));
 
@@ -60,8 +62,8 @@ class RefreshTokenServiceTest {
     @BeforeEach
     void setUp() {
         refreshTokenService = new RefreshTokenService(
-                refreshTokenRepository, sessionRepository, userRepository, userMapper, auditLogService, properties,
-                clock, null);
+                refreshTokenRepository, sessionRepository, userRepository, userMapper, auditLogService,
+                tokenGenerator, properties, clock, null);
         ReflectionTestUtils.setField(refreshTokenService, "self", refreshTokenService);
     }
 
