@@ -40,3 +40,8 @@ app:
     ttl: P1D
   password-reset:
     ttl: PT30M
+  rate-limit:
+    capacity: 20
+    refill-period: PT1M
+  cors:
+    allowed-origins: []
