@@ -11,11 +11,13 @@ public class LoggingNotificationSender implements NotificationSender {
 
     @Override
     public void sendEmailVerification(String toEmail, String rawToken) {
-        log.info("[MOCK EMAIL] Verification link for {} -> token={}", toEmail, rawToken);
+        log.info("[MOCK EMAIL] Verification email queued for {}", toEmail);
+        log.debug("[MOCK EMAIL] Verification token for {} -> {}", toEmail, rawToken);
     }
 
     @Override
     public void sendPasswordReset(String toEmail, String rawToken) {
-        log.info("[MOCK EMAIL] Password reset link for {} -> token={}", toEmail, rawToken);
+        log.info("[MOCK EMAIL] Password reset email queued for {}", toEmail);
+        log.debug("[MOCK EMAIL] Password reset token for {} -> {}", toEmail, rawToken);
     }
 }
