@@ -78,7 +78,11 @@ class JwtServiceTest {
         TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "tampered@example.com", List.of("USER"));
         String token = jwtService.generateAccessToken(subject);
 
-        String tamperedToken = token.substring(0, token.length() - 1) + (token.endsWith("A") ? "B" : "A");
+        int signatureStart = token.lastIndexOf('.') + 1;
+        int tamperIndex = signatureStart + (token.length() - signatureStart) / 2;
+        char originalChar = token.charAt(tamperIndex);
+        char replacementChar = originalChar == 'A' ? 'B' : 'A';
+        String tamperedToken = token.substring(0, tamperIndex) + replacementChar + token.substring(tamperIndex + 1);
 
         assertThatThrownBy(() -> jwtService.parseAndValidate(tamperedToken))
                 .isInstanceOf(InvalidTokenException.class);
