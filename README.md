@@ -14,6 +14,7 @@ Java 21 · Spring Boot 3.5 · Spring Security · PostgreSQL · Flyway · Nimbus 
 - Device-aware session management (list, revoke, logout everywhere)
 - Role- and permission-based authorization via `@RequiresRole` / `@RequiresPermission`
 - Email verification, password reset & change
+- Rate limiting, CORS, security headers
 
 ## Quickstart
 
@@ -23,6 +24,13 @@ docker compose up --build
 ```
 
 Swagger UI: http://localhost:8080/swagger-ui.html
+
+## Design notes
+
+- Flyway owns the schema; `ddl-auto=validate` everywhere, so Hibernate never mutates it silently.
+- Errors are uniform RFC 7807 `ProblemDetail` responses.
+- Stateless security throughout — no HTTP sessions, no CSRF surface, bearer tokens only.
+- Rate limiting is an in-memory token bucket; needs a shared store (Redis) beyond a single instance.
 
 ## Testing
 
