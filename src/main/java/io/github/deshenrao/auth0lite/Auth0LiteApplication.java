@@ -2,6 +2,7 @@ package io.github.deshenrao.auth0lite;
 
 import io.github.deshenrao.auth0lite.config.CorsProperties;
 import io.github.deshenrao.auth0lite.config.EmailVerificationProperties;
+import io.github.deshenrao.auth0lite.config.JwtKeyProperties;
 import io.github.deshenrao.auth0lite.config.JwtProperties;
 import io.github.deshenrao.auth0lite.config.PasswordResetProperties;
 import io.github.deshenrao.auth0lite.config.RateLimitProperties;
@@ -14,6 +15,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 @SpringBootApplication
 @EnableConfigurationProperties({
         JwtProperties.class,
+        JwtKeyProperties.class,
         RefreshTokenProperties.class,
         SessionProperties.class,
         EmailVerificationProperties.class,

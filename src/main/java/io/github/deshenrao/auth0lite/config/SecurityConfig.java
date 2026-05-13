@@ -45,6 +45,7 @@ public class SecurityConfig {
             "/api/v1/account/resend-verification",
             "/api/v1/account/forgot-password",
             "/api/v1/account/reset-password",
+            "/.well-known/jwks.json",
             "/actuator/health",
             "/actuator/health/**",
             "/v3/api-docs/**",
