@@ -5,8 +5,6 @@ spring:
     password: ${POSTGRES_PASSWORD:changeme}
 
 app:
-  jwt:
-    secret: ${JWT_SECRET:dev-only-signing-secret-do-not-use-this-value-outside-local-development}
   cors:
     allowed-origins:
       - http://localhost:3000

@@ -4,8 +4,6 @@ spring:
       ddl-auto: validate
 
 app:
-  jwt:
-    secret: test-only-signing-secret-not-for-production-use-1234567890
   rate-limit:
     capacity: 1000
     refill-period: PT1M

@@ -6,7 +6,8 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
+    key:
+      private-key-pem: ${JWT_PRIVATE_KEY_PEM}
 
 server:
   error:

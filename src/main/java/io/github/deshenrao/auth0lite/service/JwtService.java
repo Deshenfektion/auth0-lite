@@ -3,8 +3,9 @@ package io.github.deshenrao.auth0lite.service;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jose.crypto.MACVerifier;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.github.deshenrao.auth0lite.config.JwtProperties;
@@ -12,7 +13,6 @@ import io.github.deshenrao.auth0lite.domain.TokenSubject;
 import io.github.deshenrao.auth0lite.exception.InvalidTokenException;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Clock;
 import java.time.Instant;
@@ -24,18 +24,19 @@ public class JwtService {
 
     private final JwtProperties properties;
     private final Clock clock;
-    private final MACSigner signer;
-    private final MACVerifier verifier;
+    private final RSAKey signingKey;
+    private final RSASSASigner signer;
+    private final RSASSAVerifier verifier;
 
-    public JwtService(JwtProperties properties, Clock clock) {
+    public JwtService(JwtProperties properties, RSAKey signingKey, Clock clock) {
         this.properties = properties;
         this.clock = clock;
+        this.signingKey = signingKey;
         try {
-            byte[] secretBytes = properties.secret().getBytes(StandardCharsets.UTF_8);
-            this.signer = new MACSigner(secretBytes);
-            this.verifier = new MACVerifier(secretBytes);
+            this.signer = new RSASSASigner(signingKey);
+            this.verifier = new RSASSAVerifier(signingKey);
         } catch (JOSEException exception) {
-            throw new IllegalStateException("app.jwt.secret is not a valid HS256 signing key", exception);
+            throw new IllegalStateException("The configured JWT signing key is not usable for RS256", exception);
         }
     }
 
@@ -55,7 +56,11 @@ public class JwtService {
                 .jwtID(UUID.randomUUID().toString())
                 .build();
 
-        SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .keyID(signingKey.getKeyID())
+                .build();
+
+        SignedJWT signedJwt = new SignedJWT(header, claims);
         try {
             signedJwt.sign(signer);
         } catch (JOSEException exception) {
