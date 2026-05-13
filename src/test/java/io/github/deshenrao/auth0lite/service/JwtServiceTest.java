@@ -1,5 +1,9 @@
 package io.github.deshenrao.auth0lite.service;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.jwk.KeyUse;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import io.github.deshenrao.auth0lite.config.JwtProperties;
 import io.github.deshenrao.auth0lite.domain.TokenSubject;
@@ -18,18 +22,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JwtServiceTest {
 
+    private static final RSAKey SIGNING_KEY = generateTestKey();
+
     private final JwtProperties properties = new JwtProperties(
             "auth0-lite-test-issuer",
             "auth0-lite-test-audience",
-            "test-signing-secret-that-is-long-enough-for-hs256-1234567890",
             Duration.ofMinutes(15)
     );
 
     @Test
     void generatesAndValidatesTokenWithExpectedClaims() throws Exception {
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
-        JwtService jwtService = new JwtService(properties, clock);
-        TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "claims.test@example.com", List.of("USER"));
+        JwtService jwtService = new JwtService(properties, SIGNING_KEY, clock);
+        TokenSubject subject = new TokenSubject(
+                UUID.randomUUID(), UUID.randomUUID(), "claims.test@example.com", List.of("USER"));
 
         String token = jwtService.generateAccessToken(subject);
         JWTClaimsSet claims = jwtService.parseAndValidate(token);
@@ -45,12 +51,13 @@ class JwtServiceTest {
     @Test
     void rejectsExpiredToken() {
         Instant issuedAt = Instant.parse("2026-01-01T00:00:00Z");
-        JwtService issuingService = new JwtService(properties, Clock.fixed(issuedAt, ZoneOffset.UTC));
-        TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "expired@example.com", List.of("USER"));
+        JwtService issuingService = new JwtService(properties, SIGNING_KEY, Clock.fixed(issuedAt, ZoneOffset.UTC));
+        TokenSubject subject = new TokenSubject(
+                UUID.randomUUID(), UUID.randomUUID(), "expired@example.com", List.of("USER"));
         String token = issuingService.generateAccessToken(subject);
 
         Clock afterExpiry = Clock.fixed(issuedAt.plus(Duration.ofMinutes(16)), ZoneOffset.UTC);
-        JwtService validatingService = new JwtService(properties, afterExpiry);
+        JwtService validatingService = new JwtService(properties, SIGNING_KEY, afterExpiry);
 
         assertThatThrownBy(() -> validatingService.parseAndValidate(token))
                 .isInstanceOf(InvalidTokenException.class);
@@ -59,12 +66,28 @@ class JwtServiceTest {
     @Test
     void rejectsTokenSignedWithADifferentIssuer() {
         JwtProperties otherIssuerProperties = new JwtProperties(
-                "some-other-issuer", properties.audience(), properties.secret(), properties.accessTokenTtl());
+                "some-other-issuer", properties.audience(), properties.accessTokenTtl());
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
-        JwtService issuingService = new JwtService(otherIssuerProperties, clock);
-        JwtService validatingService = new JwtService(properties, clock);
+        JwtService issuingService = new JwtService(otherIssuerProperties, SIGNING_KEY, clock);
+        JwtService validatingService = new JwtService(properties, SIGNING_KEY, clock);
 
-        TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "wrong.issuer@example.com", List.of("USER"));
+        TokenSubject subject = new TokenSubject(
+                UUID.randomUUID(), UUID.randomUUID(), "wrong.issuer@example.com", List.of("USER"));
+        String token = issuingService.generateAccessToken(subject);
+
+        assertThatThrownBy(() -> validatingService.parseAndValidate(token))
+                .isInstanceOf(InvalidTokenException.class);
+    }
+
+    @Test
+    void rejectsTokenSignedWithADifferentKey() throws JOSEException {
+        RSAKey otherKey = generateTestKey();
+        Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
+        JwtService issuingService = new JwtService(properties, otherKey, clock);
+        JwtService validatingService = new JwtService(properties, SIGNING_KEY, clock);
+
+        TokenSubject subject = new TokenSubject(
+                UUID.randomUUID(), UUID.randomUUID(), "wrong.key@example.com", List.of("USER"));
         String token = issuingService.generateAccessToken(subject);
 
         assertThatThrownBy(() -> validatingService.parseAndValidate(token))
@@ -74,8 +97,9 @@ class JwtServiceTest {
     @Test
     void rejectsTamperedSignature() {
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
-        JwtService jwtService = new JwtService(properties, clock);
-        TokenSubject subject = new TokenSubject(UUID.randomUUID(), UUID.randomUUID(), "tampered@example.com", List.of("USER"));
+        JwtService jwtService = new JwtService(properties, SIGNING_KEY, clock);
+        TokenSubject subject = new TokenSubject(
+                UUID.randomUUID(), UUID.randomUUID(), "tampered@example.com", List.of("USER"));
         String token = jwtService.generateAccessToken(subject);
 
         int signatureStart = token.lastIndexOf('.') + 1;
@@ -91,9 +115,20 @@ class JwtServiceTest {
     @Test
     void rejectsMalformedToken() {
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
-        JwtService jwtService = new JwtService(properties, clock);
+        JwtService jwtService = new JwtService(properties, SIGNING_KEY, clock);
 
         assertThatThrownBy(() -> jwtService.parseAndValidate("not-a-jwt"))
                 .isInstanceOf(InvalidTokenException.class);
+    }
+
+    private static RSAKey generateTestKey() {
+        try {
+            return new RSAKeyGenerator(2048)
+                    .keyUse(KeyUse.SIGNATURE)
+                    .keyIDFromThumbprint(true)
+                    .generate();
+        } catch (JOSEException exception) {
+            throw new IllegalStateException("Failed to generate a test RSA key", exception);
+        }
     }
 }
