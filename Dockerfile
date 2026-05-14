@@ -1,10 +1,10 @@
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY gradle ./gradle
 RUN ./gradlew --version
 COPY src ./src
-RUN ./gradlew bootJar --no-daemon -x test
+RUN ./gradlew bootJar --no-daemon --no-watch-fs -x test
 
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S auth0lite && adduser -S auth0lite -G auth0lite
