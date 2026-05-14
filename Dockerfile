@@ -12,4 +12,6 @@ WORKDIR /app
 COPY --from=build /workspace/build/libs/*.jar app.jar
 USER auth0lite
 EXPOSE 8080
+HEALTHCHECK --interval=10s --timeout=5s --retries=10 --start-period=30s \
+    CMD wget --spider -q http://localhost:8080/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "app.jar"]
